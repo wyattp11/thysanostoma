@@ -130,10 +130,10 @@
 
           // create a variable for your popup and populate your popup with information from your table
           let img
-          if (row.video === 1) {
+          if (row.video === "1") {
             img = row.img
           } else {
-            img = `<h3>` + row.LOCAL$ + `</h3>` + '<h4>' + '<b>' + 'Date: ' + '</b>' + row.Date + '</h4>' + '<h4>' + '<b>' + 'Moon phase: ' + '</b>' + row.moon + '</h4>' + '<h4>' + '<b>' + 'Credit: ' + '</b>' + row.Who + '</h4>' + '<img style="max-width: 100%; max-height: 100%;" src ='+ row.img
+            img = `<h3>` + row.LOCAL$ + `</h3>` + '<h4>' + '<b>' + 'Date: ' + '</b>' + row.Date + '</h4>' + '<h4>' + '<b>' + 'Moon phase: ' + '</b>' + row.moon + '</h4>' + '<h4>' + '<b>' + 'Credit: ' + '</b>' + row.Who + '</h4>' + '<img style="max-width: 100%; max-height: 100%;" src ='+ row.img +'>'
           }
           console.log(img)
           var popup = new mapboxgl.Popup({ offset: 25 })
