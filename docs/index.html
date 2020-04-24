@@ -1,164 +1,285 @@
 <!DOCTYPE html>
 <html>
 
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Distribution of Thysanostoma</title>
-    <meta name="description" content="">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v1.7.0/mapbox-gl.js"></script>
-    <link href="https://api.mapbox.com/mapbox-gl-js/v1.7.0/mapbox-gl.css" rel="stylesheet" />
-    <script src='https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js'></script>
-    <script type="text/javascript" src="js/geojson.min.js"></script>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Distribution of Thysanostoma</title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v1.7.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v1.7.0/mapbox-gl.css" rel="stylesheet" />
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js'></script>
+  <script type="text/javascript" src="js/geojson.min.js"></script>
 
-  </head>
-  <style>
-    body {
-      background: #404040;
-      margin: 0;
-      padding: 0;
-    }
-
-
-    #map {
-      border-left: 1px solid #fff;
-      position: absolute;
-      width: 100%;
-      top: 0;
-      bottom: 0;
-    }
+</head>
+<style>
+  body {
+    background: #404040;
+    margin: 0;
+    padding: 0;
+  }
 
 
-    /* .mapboxgl-popup {
+  #map {
+    border-left: 1px solid #fff;
+    position: absolute;
+    width: 100%;
+    top: 0;
+    bottom: 0;
+  }
+
+
+  /* .mapboxgl-popup {
       padding-bottom: 5px;
     } */
 
-    .mapboxgl-popup-close-button {
-      display: none;
-    }
+  .mapboxgl-popup-close-button {
+    display: none;
+  }
 
-    .mapboxgl-popup-content {
-      font: 400 15px/22px 'Source Sans Pro', 'Helvetica Neue', Sans-serif;
-      padding: 0;
-      width: 350px;
-    }
+  .mapboxgl-popup-content {
+    font: 400 15px/22px 'Source Sans Pro', 'Helvetica Neue', Sans-serif;
+    padding: 0;
+    width: 350px;
+  }
 
-    .mapboxgl-popup-content-wrapper {
-      padding: 1%;
-    }
+  .mapboxgl-popup-content-wrapper {
+    padding: 1%;
+  }
 
-    .mapboxgl-popup-content h3 {
-      background: rgb(61, 59, 59);
-      text-align: center;
-      color: #fff;
-      margin: 0;
-      display: block;
-      padding: 15px;
-      font-weight: 700;
-      margin-top: -5px;
-    }
+  .mapboxgl-popup-content h3 {
+    background: rgb(61, 59, 59);
+    text-align: center;
+    color: #fff;
+    margin: 0;
+    display: block;
+    padding: 15px;
+    font-weight: 700;
+    margin-top: -5px;
+  }
 
-    .mapboxgl-popup-content h4 {
-      margin: 0;
-      display: block;
-      padding: 10px 3px 10px 10px;
-      font-weight: 400;
-    }
+  .mapboxgl-popup-content h4 {
+    margin: 0;
+    display: block;
+    padding: 10px 3px 10px 10px;
+    font-weight: 400;
+  }
 
-    .mapboxgl-container {
-      cursor: pointer;
-    }
+  .mapboxgl-container {
+    cursor: pointer;
+  }
 
-    .mapboxgl-popup-anchor-top>.mapboxgl-popup-content {
-      margin-top: 3px;
-    }
+  .mapboxgl-popup-anchor-top>.mapboxgl-popup-content {
+    margin-top: 3px;
+  }
 
-    .mapboxgl-popup-anchor-top>.mapboxgl-popup-tip {
-      border-bottom-color: rgb(61, 59, 59);
-    }
+  .mapboxgl-popup-anchor-top>.mapboxgl-popup-tip {
+    border-bottom-color: rgb(61, 59, 59);
+  }
+</style>
 
-  </style>
+<body>
 
-  <body>
-
-    <div id="map"></div>
-    <script>
-      var transformRequest = (url, resourceType) => {
-        var isMapboxRequest =
-          url.slice(8, 22) === "api.mapbox.com" ||
-          url.slice(10, 26) === "tiles.mapbox.com";
-        return {
-          url: isMapboxRequest
-            ? url.replace("?", "?pluginName=sheetMapper&")
-            : url
-        };
+  <div id="map"></div>
+  <script>
+    var transformRequest = (url, resourceType) => {
+      var isMapboxRequest =
+        url.slice(8, 22) === "api.mapbox.com" ||
+        url.slice(10, 26) === "tiles.mapbox.com";
+      return {
+        url: isMapboxRequest ?
+          url.replace("?", "?pluginName=sheetMapper&") :
+          url
       };
+    };
 
-      //YOUR TURN: add your Mapbox access token 
-      mapboxgl.accessToken = 'pk.eyJ1Ijoid3lhdHRwIiwiYSI6IjI2ZjYxZTgzNjNjZmQ0NGIxMGEzNDQxOTZjZDEzYTE0In0.n5Wmp0u1iTNMHHU6q0_eRg';
-      var map = new mapboxgl.Map({
-        attributionControl: true,
-        container: 'map', // container id
-        style: "mapbox://styles/mapbox/light-v10", //YOUR TURN: choose a style: https://docs.mapbox.com/api/maps/#styles
-        center: [120, 0], // starting position [lng, lat]
-        zoom: 2, // starting zoom
-        transformRequest: transformRequest
-      }).addControl(new mapboxgl.AttributionControl({
-        compact: true,
-        customAttribution: ['<a href="https://docs.google.com/spreadsheets/d/1Gjjb46bjlSpHLiBq5P-vUJCumoirX44GGEB21AWYW0c/edit?usp=sharing" target="_blank">© Patry 202X</a>','<a href="https://www.Jellywatch.org/" target="_blank">© Jellywatch.org</a>','<a href="https://www.iNaturalist.org/" target="_blank">© iNaturalist.org</a>']
+    //YOUR TURN: add your Mapbox access token 
+    mapboxgl.accessToken =
+      'pk.eyJ1Ijoid3lhdHRwIiwiYSI6IjI2ZjYxZTgzNjNjZmQ0NGIxMGEzNDQxOTZjZDEzYTE0In0.n5Wmp0u1iTNMHHU6q0_eRg';
+    var map = new mapboxgl.Map({
+      attributionControl: true,
+      container: 'map', // container id
+      style: "mapbox://styles/mapbox/light-v10", //YOUR TURN: choose a style: https://docs.mapbox.com/api/maps/#styles
+      center: [120, 0], // starting position [lng, lat]
+      zoom: 2, // starting zoom
+      transformRequest: transformRequest
+    }).addControl(new mapboxgl.AttributionControl({
+      compact: true,
+      customAttribution: [
+        '<a href="https://docs.google.com/spreadsheets/d/1Gjjb46bjlSpHLiBq5P-vUJCumoirX44GGEB21AWYW0c/edit?usp=sharing" target="_blank">© Patry 202X</a>',
+        '<a href="https://www.Jellywatch.org/" target="_blank">© Jellywatch.org</a>',
+        '<a href="https://www.iNaturalist.org/" target="_blank">© iNaturalist.org</a>'
+      ]
     }));
+    var jellies
+    // data.forEach(function(row) {
 
+    //   // create a variable for your popup and populate your popup with information from your table
+    //   let img
+    //   if (row.video === "1") {
+    //     img = `<h3>` + row.LOCAL$ + `</h3>` + '<h4>' + '<b>' + 'Date: ' + '</b>' + row.Date + '</h4>' + '<h4>' + '<b>' + 'Moon phase: ' + '</b>' + row.moon + '</h4>' + '<h4>' + '<b>' + 'Credit: ' + '</b>' + row.Who + '</h4>' + row.img
+    //   } else {
+    //     img = `<h3>` + row.LOCAL$ + `</h3>` + '<h4>' + '<b>' + 'Date: ' + '</b>' + row.Date + '</h4>' + '<h4>' + '<b>' + 'Moon phase: ' + '</b>' + row.moon + '</h4>' + '<h4>' + '<b>' + 'Credit: ' + '</b>' + row.Who + '</h4>' + '<img style="max-width: 100%; max-height: 100%;" src ='+ row.img +'>'
+    //   }
+    //   var popup = new mapboxgl.Popup()
+    //   .setHTML(img)
 
-      map.on("load", function() {
-        init();
-      });
+    //   // create a variable for your markup and add it to the map 
+    //   var marker = new mapboxgl.Marker({
+    //       color: 'purple'
+    //     })
+    //     .setLngLat([row.Longitude, row.Latitude])
+    //     .setPopup(popup)
+    //     .addTo(map); // add the marker to the map
+    // });
+    map.on('load', function () {
+          // create a function called addPoints that iterates through your table (row by row) to create markers and popups
+          function addPoints(data) {
 
-      // Initialize Tabletop to access your table
-      function init() {
-        Tabletop.init({
-          // YOUR TURN: change 'key' value to point to your spreadsheet
-          key: 'https://docs.google.com/spreadsheets/d/1Gjjb46bjlSpHLiBq5P-vUJCumoirX44GGEB21AWYW0c/edit?usp=sharing',
-          // once Tabletop has loaded the data, it passes it to the 'callback' function, 'addPoints', defined below
-          callback: addPoints,
-          simpleSheet: true
-        });
-      }
-
-
-      // create a function called addPoints that iterates through your table (row by row) to create markers and popups
-      function addPoints(data) {
-
-        // iterate through your table to set the marker to lat/long values for each row
-        console.log(data)
-        GeoJSON.parse(data, {Point: ['Latitude', 'Longitude']}, function(geojson) {
-          console.log(geojson)
-        })
-        data.forEach(function(row) {
-
-          // create a variable for your popup and populate your popup with information from your table
-          let img
-          if (row.video === "1") {
-            img = `<h3>` + row.LOCAL$ + `</h3>` + '<h4>' + '<b>' + 'Date: ' + '</b>' + row.Date + '</h4>' + '<h4>' + '<b>' + 'Moon phase: ' + '</b>' + row.moon + '</h4>' + '<h4>' + '<b>' + 'Credit: ' + '</b>' + row.Who + '</h4>' + row.img
-          } else {
-            img = `<h3>` + row.LOCAL$ + `</h3>` + '<h4>' + '<b>' + 'Date: ' + '</b>' + row.Date + '</h4>' + '<h4>' + '<b>' + 'Moon phase: ' + '</b>' + row.moon + '</h4>' + '<h4>' + '<b>' + 'Credit: ' + '</b>' + row.Who + '</h4>' + '<img style="max-width: 100%; max-height: 100%;" src ='+ row.img +'>'
-          }
-          var popup = new mapboxgl.Popup()
-          .setHTML(img)
-
-          // create a variable for your markup and add it to the map 
-          var marker = new mapboxgl.Marker({
-              color: 'purple'
+            // convert data to geojson format
+            console.log(data)
+            GeoJSON.parse(data, {
+              Point: ['Latitude', 'Longitude']
+            }, function (geojson) {
+              console.log(geojson)
+              jellies = geojson
             })
-            .setLngLat([row.Longitude, row.Latitude])
-            .setPopup(popup)
-            .addTo(map); // add the marker to the map
+            // Add a new source from our GeoJSON data and
+            // set the 'cluster' option to true. GL-JS will
+            // add the point_count property to your source data.
+            map.addSource('jellies', {
+              type: 'geojson',
+              // Point to GeoJSON data.
+              data: jellies,
+              cluster: true,
+              clusterMaxZoom: 10, // Max zoom to cluster points on
+              clusterRadius: 100 // Radius of each cluster when clustering points (defaults to 50)
+            });
 
+            map.addLayer({
+              id: 'clusters',
+              type: 'circle',
+              source: 'jellies',
+              filter: ['has', 'point_count'],
+              paint: {
+                // Use step expressions (https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step)
+                // with three steps to implement three types of circles:
+                //   * Blue, 20px circles when point count is less than 100
+                //   * Yellow, 30px circles when point count is between 100 and 750
+                //   * Pink, 40px circles when point count is greater than or equal to 750
+                'circle-color': [
+                  'step',
+                  ['get', 'point_count'],
+                  '#FF9CCC',
+                  10,
+                  '#BD7397'
+                ],
+                'circle-radius': [
+                  'step',
+                  ['get', 'point_count'],
+                  20,
+                  10,
+                  30,
+                  100,
+                  40
+                ]
+              }
+            });
 
-        });
-      }
+            map.addLayer({
+              id: 'cluster-count',
+              type: 'symbol',
+              source: 'jellies',
+              filter: ['has', 'point_count'],
+              layout: {
+                'text-field': '{point_count_abbreviated}',
+                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                'text-size': 12
+              }
+            });
 
-    </script>
-  </body>
+            map.addLayer({
+              id: 'unclustered-point',
+              type: 'circle',
+              source: 'jellies',
+              filter: ['!', ['has', 'point_count']],
+              paint: {
+                'circle-color': '#D683AB',
+                'circle-radius': 6,
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#eee'
+              }
+            });
+
+            // inspect a cluster on click
+            map.on('click', 'clusters', function (e) {
+              let features = map.queryRenderedFeatures(e.point, {
+                layers: ['clusters']
+              });
+              let clusterId = features[0].properties.cluster_id;
+              map.getSource('jellies').getClusterExpansionZoom(
+                clusterId,
+                function (err, zoom) {
+                  if (err) return;
+
+                  map.easeTo({
+                    center: features[0].geometry.coordinates,
+                    zoom: zoom
+                  });
+                }
+              );
+            });
+
+            // When a click event occurs on a feature in
+            // the unclustered-point layer, open a popup at
+            // the location of the feature, with
+            // description HTML from its properties.
+            map.on('click', 'unclustered-point', function (e) {
+
+              let coordinates = e.features[0].geometry.coordinates.slice()
+
+              // Ensure that if the map is zoomed out such that
+              // multiple copies of the feature are visible, the
+              // popup appears over the copy being pointed to.
+              while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+              }
+
+              new mapboxgl.Popup()
+                .setLngLat(coordinates)
+                .setHTML('<div style="max-width: 300px; height: 200px"><a href="' + e.features[0].properties.Link +
+                  '">' + e.features[0].properties.LOCAL$ +
+                  '</a>  <img style="max-width: 90%; max-height: 90%;" src = ' + e.features[0].properties
+                  .img + ' ><div><a>' + e.features[0].properties.license + '</a> <a> ' + e.features[0]
+                  .properties.Who
+            });
+
+            map.on('mouseenter', 'clusters', function () {
+              map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', 'clusters', function () {
+              map.getCanvas().style.cursor = '';
+            });
+            let geojson = map.getLayer('clusters')
+            console.log(geojson)
+            let bbox = turf.bbox(geojson)
+            map.fitBounds(bbox, {
+              padding: 20
+            })
+          }
+            // Initialize Tabletop to access your table
+              Tabletop.init({
+                // YOUR TURN: change 'key' value to point to your spreadsheet
+                key: 'https://docs.google.com/spreadsheets/d/1Gjjb46bjlSpHLiBq5P-vUJCumoirX44GGEB21AWYW0c/edit?usp=sharing',
+                // once Tabletop has loaded the data, it passes it to the 'callback' function, 'addPoints', defined below
+                callback: addPoints,
+                simpleSheet: true
+              });
+            
+            
+          }
+  </script>
+</body>
 
 </html>
