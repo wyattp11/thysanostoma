@@ -144,7 +144,7 @@
             // convert data to geojson format
             console.log(data)
             GeoJSON.parse(data, {
-              Point: ['Longitude', 'Latitude']
+              Point: ['Latitude', 'Longitude']
             }, function (geojson) {
               console.log(geojson)
               jellies = geojson
