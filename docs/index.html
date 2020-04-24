@@ -144,7 +144,7 @@
             // convert data to geojson format
             console.log(data)
             GeoJSON.parse(data, {
-              Point: ['Latitude', 'Longitude']
+              Point: ['Longitude', 'Latitude']
             }, function (geojson) {
               console.log(geojson)
               jellies = geojson
@@ -157,7 +157,7 @@
               // Point to GeoJSON data.
               data: jellies,
               cluster: true,
-              clusterMaxZoom: 8, // Max zoom to cluster points on
+              clusterMaxZoom: 12, // Max zoom to cluster points on
               clusterRadius: 80 // Radius of each cluster when clustering points (defaults to 50)
             });
 
