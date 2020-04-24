@@ -10,6 +10,7 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v1.7.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v1.7.0/mapbox-gl.css" rel="stylesheet" />
     <script src='https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js'></script>
+    <script type="text/javascript" src="js/geojson.min.js"></script>
 
   </head>
   <style>
@@ -130,6 +131,9 @@
 
         // iterate through your table to set the marker to lat/long values for each row
         console.log(data)
+        GeoJSON.parse(data, {Point: ['lat', 'lng']}, function(geojson) {
+          console.log(JSON.stringify(geojson));
+        })
         data.forEach(function(row) {
 
           // create a variable for your popup and populate your popup with information from your table
