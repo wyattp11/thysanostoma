@@ -131,7 +131,7 @@
 
         // iterate through your table to set the marker to lat/long values for each row
         console.log(data)
-        GeoJSON.parse(data, {Point: ['lat', 'lng']}, function(geojson) {
+        GeoJSON.parse(data, {Point: ['Latitude', 'Longitude']}, function(geojson) {
           console.log(geojson)
         })
         data.forEach(function(row) {
