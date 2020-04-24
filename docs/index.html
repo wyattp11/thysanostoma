@@ -116,7 +116,6 @@
         '<a href="https://www.iNaturalist.org/" target="_blank">© iNaturalist.org</a>'
       ]
     }));
-    var jellies
     // data.forEach(function(row) {
 
     //   // create a variable for your popup and populate your popup with information from your table
@@ -140,7 +139,7 @@
     map.on('load', function () {
           // create a function called addPoints that iterates through your table (row by row) to create markers and popups
           function addPoints(data) {
-
+            let jellies
             // convert data to geojson format
             console.log(data)
             GeoJSON.parse(data, {
@@ -252,11 +251,12 @@
 
                 new mapboxgl.Popup()
                   .setLngLat(coordinates)
-                  .setHTML('<div style="max-width: 300px; height: 200px"><a href="' + e.features[0].properties.Link +
-                    '">' + e.features[0].properties.LOCAL$ +
-                    '</a>  <img style="max-width: 90%; max-height: 90%;" src = ' + e.features[0].properties
-                    .img + ' ><div><a>' + e.features[0].properties.license + '</a> <a> ' + e.features[0]
-                    .properties.Who +'</a></div></div>')
+                  .setHTML(`<h3>` + e.features[0].properties.LOCAL$ + `</h3>`  +
+                    `<b>` + 'Date: ' + '</b>' + e.features[0].properties.Date + '</h4>' + 
+                    '<h4>' + '<b>' + 'Moon phase: ' + e.features[0].properties.moon + '</b>' + '</h4>' + 
+                    '<h4 src =' + e.features[0].properties.Link + '>' + '<b>' + 'Credit: ' + e.features[0].properties.Who + '</b>' + '</h4>' +
+                    e.features[0].properties.video +
+                    '<img style="max-width: 100%; max-height: 100%;" src ='+ e.features[0].properties.img +'>')
                   .addTo(map)
                 })
               map.on('mouseenter', 'clusters', function () {
