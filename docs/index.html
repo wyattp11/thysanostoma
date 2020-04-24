@@ -9,6 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://api.mapbox.com/mapbox-gl-js/v1.7.0/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v1.7.0/mapbox-gl.css" rel="stylesheet" />
+  <script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
   <script src='https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js'></script>
   <script type="text/javascript" src="js/geojson.min.js"></script>
 
@@ -33,7 +34,7 @@
   /* .mapboxgl-popup {
       padding-bottom: 5px;
     } */
-
+/* 
   .mapboxgl-popup-close-button {
     display: none;
   }
@@ -76,7 +77,7 @@
 
   .mapboxgl-popup-anchor-top>.mapboxgl-popup-tip {
     border-bottom-color: rgb(61, 59, 59);
-  }
+  } */
 </style>
 
 <body>
@@ -152,8 +153,8 @@
               // Point to GeoJSON data.
               data: jellies,
               cluster: true,
-              clusterMaxZoom: 10, // Max zoom to cluster points on
-              clusterRadius: 100 // Radius of each cluster when clustering points (defaults to 50)
+              clusterMaxZoom: 8, // Max zoom to cluster points on
+              clusterRadius: 80 // Radius of each cluster when clustering points (defaults to 50)
             });
 
             map.addLayer({
