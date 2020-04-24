@@ -260,7 +260,8 @@
                 map.getCanvas().style.cursor = '';
               });
               let geojson = map.getLayer('clusters')
-              console.log(geojson) let bbox = turf.bbox(geojson)
+              console.log(geojson) 
+              let bbox = turf.bbox(geojson)
               map.fitBounds(bbox, {
                 padding: 20
               })
