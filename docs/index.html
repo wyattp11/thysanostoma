@@ -264,7 +264,7 @@
               }); map.on('mouseleave', 'clusters', function () {
                 map.getCanvas().style.cursor = '';
               });
-              let geojson = map.getLayer('clusters')
+              let geojson = map.getLayer('unclustered-point')
               console.log(geojson) 
               let bbox = turf.bbox(geojson)
               map.fitBounds(bbox, {
