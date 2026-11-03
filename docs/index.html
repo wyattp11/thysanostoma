@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Distribution of Thysanostoma — sightings map</title>
+  <meta name="description" content="Georeferenced sightings of the tasseled jelly Thysanostoma (Scyphozoa: Rhizostomeae) compiled from a personal database, Jellywatch and iNaturalist, with dates, credits and lunar phase.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+  <style>
+    :root { --navy:#0B1F3A; --ink:#1A1A1A; --muted:#5E6B78; --orange:#E69F00; --blue:#0072B2; --green:#009E73; --sky:#56B4E9; --purple:#CC79A7; }
+    html, body { height:100%; margin:0; font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); }
+    #map { position:absolute; inset:0; }
+    /* panel */
+    #panel { position:absolute; top:12px; left:12px; z-index:2; width:min(300px, calc(100vw - 24px)); background:rgba(11,31,58,.94); color:#E9EEF3;
+             border-radius:10px; padding:12px 14px; box-shadow:0 6px 20px rgba(0,0,0,.25); backdrop-filter:blur(4px); }
+    #panel h1 { margin:0 0 2px; font-size:17px; font-weight:700; letter-spacing:.2px; }
+    #panel h1 em { font-style:italic; }
+    #panel .sub { color:#AEBCCB; font-size:12px; margin-bottom:8px; }
+    #panel .row { display:flex; gap:10px; align-items:center; margin:4px 0; font-size:13px; }
+    #panel .swatch { width:12px; height:12px; border-radius:50%; border:2px solid #fff; flex:none; }
+    #panel label { cursor:pointer; display:flex; gap:8px; align-items:center; }
+    #panel input[type=checkbox] { accent-color:var(--orange); }
+    #panel .btns { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+    #panel button { background:#14304F; color:#E9EEF3; border:1px solid #2B4E73; border-radius:6px; padding:5px 9px; font-size:12px; cursor:pointer; }
+    #panel button:hover { background:#1F3A5A; }
+    #panel .foot { color:#AEBCCB; font-size:11px; margin-top:8px; line-height:1.35; }
+    #panel .foot a { color:#8ED1C3; text-decoration:none; }
+    #toggle { display:none; }
+    @media (max-width:560px){ #panel .collapsible { display:none; } #panel.open .collapsible { display:block; } #toggle { display:inline-block; float:right; } }
+    /* popup */
+    .mapboxgl-popup { max-width:min(360px, 90vw) !important; }
+    .mapboxgl-popup-content { padding:0; border-radius:10px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.28); font-size:13px; }
+    .pp-head { background:var(--navy); color:#fff; padding:10px 12px; }
+    .pp-head b { font-size:14px; }
+    .pp-head span { color:#AEBCCB; font-size:12px; margin-left:6px; }
+    .pp-body { padding:9px 12px 10px; }
+    .pp-body div { margin:2px 0; }
+    .pp-body .k { color:var(--muted); }
+    .pp-body a { color:var(--blue); text-decoration:none; }
+    .pp-body a:hover { text-decoration:underline; }
+    .pp-media { display:block; width:100%; max-height:240px; object-fit:cover; background:#eef2f5; }
+    .pp-video { width:100%; aspect-ratio:16/9; border:0; display:block; }
+    .pp-tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:10px; background:#EEF2F5; color:var(--muted); margin-left:4px; vertical-align:middle; }
+    .mapboxgl-popup-close-button { color:#fff; font-size:18px; right:6px; top:4px; }
+    .mapboxgl-popup-close-button:hover { background:transparent; color:var(--orange); }
+  </style>
+</head>
+<body>
+  <div id="map" role="application" aria-label="Map of Thysanostoma sightings"></div>
+
+  <div id="panel">
+    <button id="toggle" aria-label="Show legend">☰</button>
+    <h1>Distribution of <em>Thysanostoma</em></h1>
+    <div class="sub" id="counts">loading sightings…</div>
+    <div class="collapsible">
+      <div class="row"><label><input type="checkbox" id="f-personal" checked><span class="swatch" style="background:var(--orange)"></span>Personal database &amp; Jellywatch</label></div>
+      <div class="row"><label><input type="checkbox" id="f-inat" checked><span class="swatch" style="background:var(--blue)"></span>iNaturalist</label></div>
+      <div class="row" style="margin-top:6px"><span class="swatch" style="background:var(--green); width:18px; height:18px"></span><span>Clusters — click to expand</span></div>
+      <div class="btns">
+        <button id="b-world">World</button>
+        <button id="b-hawaii">Hawaiʻi</button>
+        <button id="b-kona">Kona</button>
+      </div>
+      <div class="foot">Click a point for date, place, credit, moon phase and photo. Data: personal sighting database,
+        <a href="https://www.jellywatch.org/" target="_blank" rel="noopener">Jellywatch</a> and
+        <a href="https://www.inaturalist.org/" target="_blank" rel="noopener">iNaturalist</a>. Photos © their photographers.
+        <span id="generated"></span></div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- helpers ----------
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const safeUrl = u => /^https?:\/\//i.test(u || "") ? u : "";
+    const HAWAII_BBOX = [[-161.5, 18.5], [-154.3, 23.2]];
+    const KONA_BBOX   = [[-156.25, 18.9], [-155.6, 20.3]];
+
+    // Pacific-aware bounds: shift western-hemisphere longitudes by +360 when that gives a tighter span.
+    function pacificBounds(features){
+      const lons = features.map(f => f.geometry.coordinates[0]), lats = features.map(f => f.geometry.coordinates[1]);
+      const span = a => Math.max(...a) - Math.min(...a);
+      const shifted = lons.map(l => l < 0 ? l + 360 : l);
+      const use = span(shifted) < span(lons) ? shifted : lons;
+      return [[Math.min(...use), Math.min(...lats)], [Math.max(...use), Math.max(...lats)]];
+    }
+
+    function popupHTML(p){
+      const head = `<div class="pp-head"><b>${esc(p.region || p.place || "Sighting")}</b><span>${esc(p.date_nice || p.date || "date unknown")}</span></div>`;
+      let media = "";
+      if (p.video) media = `<iframe class="pp-video" loading="lazy" src="https://www.youtube-nocookie.com/embed/${esc(p.video)}" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+      else if (safeUrl(p.img)) media = `<a href="${esc(safeUrl(p.link) || p.img)}" target="_blank" rel="noopener"><img class="pp-media" loading="lazy" src="${esc(p.img)}" alt="Thysanostoma sighting photo" onerror="this.parentNode.style.display='none'"></a>`;
+      const rows = [];
+      if (p.place && p.place !== p.region) rows.push(`<div><span class="k">Place:</span> ${esc(p.place)}</div>`);
+      if (p.credit) rows.push(`<div><span class="k">Credit:</span> ${safeUrl(p.link) ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.credit)} ↗</a>` : esc(p.credit)}${p.license ? `<span class="pp-tag">${esc(p.license)}</span>` : ""}</div>`);
+      if (p.moon) rows.push(`<div><span class="k">Moon:</span> ${esc(p.moon)}${p.illum != null ? ` (${Math.round(p.illum)}% lit)` : ""}</div>`);
+      if (p.species) rows.push(`<div><span class="k">Species:</span> <i>${esc(p.species)}</i></div>`);
+      if (p.condition) rows.push(`<div><span class="k">Condition:</span> ${esc(p.condition)}</div>`);
+      rows.push(`<div><span class="k">Source:</span> ${p.source === "inaturalist" ? "iNaturalist" : "personal database"}${p.grade ? `<span class="pp-tag">${esc(p.grade.replace("_"," "))}</span>` : ""}</div>`);
+      return head + media + `<div class="pp-body">${rows.join("")}</div>`;
+    }
+
+    // ---------- map ----------
+    // ============================================================================
+    // WYATT: PASTE YOUR MAPBOX PUBLIC TOKEN BETWEEN THE QUOTES BELOW (on GitHub.com).
+    //   The token is committed as a placeholder because GitHub push protection
+    //   blocks any Mapbox token from the command line. Edit this one line in the
+    //   GitHub web editor (docs/index.html → pencil icon), paste the pk. token,
+    //   commit directly to master; if GitHub warns, choose "It's used in tests" /
+    //   bypass. Use the URL-restricted token (wyattp11.github.io/*), not the 2020 one.
+    //   The map shows nothing but a grey box until this is filled in.
+    // ============================================================================
+    mapboxgl.accessToken = "PASTE_MAPBOX_PUBLIC_TOKEN_HERE";
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/mapbox/light-v11",
+      projection: "mercator",
+      center: [150, 5], zoom: 2, minZoom: 1,
+      attributionControl: false
+    });
+    map.addControl(new mapboxgl.NavigationControl({ showCompass:false }), "top-right");
+    map.addControl(new mapboxgl.AttributionControl({ compact:true,
+      customAttribution: ['Sightings © Wyatt Patry', '<a href="https://www.jellywatch.org/" target="_blank">Jellywatch</a>', '<a href="https://www.inaturalist.org/" target="_blank">iNaturalist</a>'] }), "bottom-right");
+
+    map.on("load", async () => {
+      const res = await fetch("data/sightings.geojson", { cache:"no-cache" });
+      const gj = await res.json();
+      const all = gj.features;
+
+      map.addSource("jellies", { type:"geojson", data:gj, cluster:true, clusterMaxZoom:11, clusterRadius:55 });
+
+      map.addLayer({ id:"clusters", type:"circle", source:"jellies", filter:["has","point_count"],
+        paint:{ "circle-color":["step",["get","point_count"], "#009E73", 10, "#0072B2", 30, "#CC79A7"],
+                "circle-radius":["step",["get","point_count"], 16, 10, 22, 30, 30],
+                "circle-stroke-width":2, "circle-stroke-color":"#fff", "circle-opacity":.9 } });
+      map.addLayer({ id:"cluster-count", type:"symbol", source:"jellies", filter:["has","point_count"],
+        layout:{ "text-field":"{point_count_abbreviated}", "text-font":["DIN Pro Medium","Arial Unicode MS Bold"], "text-size":12 }, paint:{ "text-color":"#fff" } });
+      map.addLayer({ id:"points", type:"circle", source:"jellies", filter:["!",["has","point_count"]],
+        paint:{ "circle-color":["match",["get","source"],"inaturalist","#0072B2","#E69F00"],
+                "circle-radius":["interpolate",["linear"],["zoom"], 2, 5, 8, 8], "circle-stroke-width":2, "circle-stroke-color":"#fff" } });
+
+      // counts + fit
+      const n = all.length, nH = all.filter(f => f.properties.hawaii).length;
+      const yrs = all.map(f => f.properties.year).filter(Boolean);
+      document.getElementById("counts").textContent = `${n} sightings · ${nH} in Hawaiian waters · ${Math.min(...yrs)}–${Math.max(...yrs)}`;
+      fetch("data/summary.json").then(r => r.json()).then(s => { document.getElementById("generated").textContent = `Updated ${s.generated}.`; }).catch(()=>{});
+      map.fitBounds(pacificBounds(all), { padding:40, duration:0 });
+
+      // interactions
+      map.on("click", "clusters", e => {
+        const f = map.queryRenderedFeatures(e.point, { layers:["clusters"] })[0];
+        map.getSource("jellies").getClusterExpansionZoom(f.properties.cluster_id, (err, zoom) => {
+          if (!err) map.easeTo({ center:f.geometry.coordinates, zoom, duration:700 });
+        });
+      });
+      map.on("click", "points", e => {
+        const f = e.features[0], c = f.geometry.coordinates.slice();
+        while (Math.abs(e.lngLat.lng - c[0]) > 180) c[0] += e.lngLat.lng > c[0] ? 360 : -360;
+        new mapboxgl.Popup({ offset:10, maxWidth:"360px" }).setLngLat(c).setHTML(popupHTML(f.properties)).addTo(map);
+      });
+      for (const id of ["clusters","points"]) {
+        map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
+        map.on("mouseleave", id, () => map.getCanvas().style.cursor = "");
+      }
+
+      // source filters (re-feed the source so clusters recount)
+      const applyFilter = () => {
+        const keep = new Set();
+        if (document.getElementById("f-personal").checked) keep.add("personal");
+        if (document.getElementById("f-inat").checked) keep.add("inaturalist");
+        map.getSource("jellies").setData({ type:"FeatureCollection", features: all.filter(f => keep.has(f.properties.source)) });
+      };
+      document.getElementById("f-personal").addEventListener("change", applyFilter);
+      document.getElementById("f-inat").addEventListener("change", applyFilter);
+
+      // view buttons
+      document.getElementById("b-world").onclick  = () => map.fitBounds(pacificBounds(all), { padding:40 });
+      document.getElementById("b-hawaii").onclick = () => map.fitBounds(HAWAII_BBOX, { padding:40 });
+      document.getElementById("b-kona").onclick   = () => map.fitBounds(KONA_BBOX, { padding:40 });
+      document.getElementById("toggle").onclick   = () => document.getElementById("panel").classList.toggle("open");
+    });
+  </script>
+</body>
+</html>
