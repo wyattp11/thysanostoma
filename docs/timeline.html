@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Thysanostoma off Hawaiʻi — SST, sightings & the warm-season build</title>
+  <meta name="description" content="Interactive time series of Hawaiian-waters sea-surface temperature with Thysanostoma sightings, cyclones and ENSO phase, 2000–2026, with a step-through highlight of the warm-season concentration.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+  <script src="data/hawaii-sst-series.js"></script>
+  <style>
+    :root { --navy:#0B1F3A; --ink:#1A1A1A; --muted:#5E6B78; --orange:#E69F00; --blue:#0072B2; --green:#009E73; --sky:#56B4E9; --verm:#D55E00; }
+    html,body { margin:0; background:#F3F5F7; color:var(--ink); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    header { background:var(--navy); color:#fff; padding:14px 22px; display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
+    header h1 { margin:0; font-size:18px; font-weight:700; }
+    header h1 em { font-style:italic; }
+    header .sub { color:#AEBCCB; font-size:12.5px; }
+    header a { color:#8ED1C3; text-decoration:none; margin-left:auto; font-size:13px; }
+    .wrap { max-width:1280px; margin:0 auto; padding:14px 18px 28px; }
+    .card { background:#fff; border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,.08); padding:12px 14px 6px; }
+    #plot { width:100%; height:min(62vh, 560px); }
+    .controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:8px 2px 4px; }
+    .controls button { background:#14304F; color:#E9EEF3; border:1px solid #2B4E73; border-radius:6px; padding:6px 11px; font-size:13px; cursor:pointer; }
+    .controls button:hover { background:#1F3A5A; }
+    .controls button:disabled { opacity:.4; cursor:default; }
+    .steps { display:inline-flex; border:1px solid #2B4E73; border-radius:6px; overflow:hidden; }
+    .steps button { border:0; border-radius:0; }
+    .steps button + button { border-left:1px solid #2B4E73; }
+    .steps button.on { background:var(--orange); color:var(--navy); font-weight:600; }
+    .caption { font-size:14px; color:var(--ink); min-height:1.4em; margin:2px 2px 8px; }
+    .caption b { color:var(--verm); }
+    .note { color:var(--muted); font-size:12.5px; margin-top:10px; }
+    kbd { background:#EEF2F5; border:1px solid #DCE2E8; border-radius:4px; padding:0 5px; font-size:11px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hawaiian-waters SST with <em>Thysanostoma</em> sightings, 2000–2026</h1>
+    <span class="sub">NOAA OISST v2.1 · sightings as dots on the SST line (size = count) · cyclones · ENSO phase</span>
+    <a href="./">← sightings map</a>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="controls">
+        <button id="prev">◀</button>
+        <div class="steps" role="group" aria-label="Build steps">
+          <button data-step="0">Time series</button><button data-step="1">Warmest months</button><button data-step="2">Highlight sightings</button><button data-step="3">The number</button>
+        </div>
+        <button id="next">Next ▶</button>
+        <span class="note" style="margin:0">or use <kbd>←</kbd> <kbd>→</kbd> · <kbd>F</kbd> fullscreen</span>
+      </div>
+      <div class="caption" id="caption"></div>
+      <div id="plot"></div>
+      <p class="note">SST is a 4-point Hawaiian-waters monthly mean (Kona, Maui, Oʻahu, Kauaʻi offshore cells); heavier line = 12-month rolling mean.
+        Background bands: El Niño (orange) / La Niña (blue) years by annual-mean ONI. Cyclones = made landfall or passed within ~200 nmi of the main islands (curated CPHC list).
+        Sighting counts are effort-driven — the increase over time mainly reflects observers, not abundance. Sightings are read live from the site's dataset.</p>
+    </div>
+  </div>
+
+  <script>
+    const OK = { orange:'#E69F00', sky:'#56B4E9', green:'#009E73', blue:'#0072B2', verm:'#D55E00', purple:'#CC79A7', black:'#000', grey:'#B9B9B9' };
+    const ENSO = {2000:"nina",2001:"neutral",2002:"nino",2003:"neutral",2004:"neutral",2005:"neutral",2006:"neutral",2007:"nina",2008:"nina",2009:"neutral",2010:"neutral",2011:"nina",2012:"neutral",2013:"neutral",2014:"neutral",2015:"nino",2016:"neutral",2017:"neutral",2018:"neutral",2019:"nino",2020:"neutral",2021:"nina",2022:"nina",2023:"nino",2024:"neutral",2025:"neutral",2026:"neutral"};
+    const ENSO_FILL = { nino:'rgba(213,94,0,0.13)', nina:'rgba(0,114,178,0.13)', neutral:'rgba(0,0,0,0)' };
+    const STORMS = [["Flossie",2007,8],["Flossie",2013,7],["Iselle",2014,8],["Ana",2014,10],["Ignacio",2015,8],["Darby",2016,7],
+                    ["Madeline",2016,9],["Lane",2018,8],["Olivia",2018,9],["Erick",2019,8],["Douglas",2020,7],["Hone",2024,8]];
+    const WARM = [8,9,10];                       // three warmest months, SST climatology (Aug 27.1, Sep 27.3, Oct 27.3 °C)
+    const MN = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const CAPTIONS = [
+      "Monthly SST (thin line) and its 12-month rolling mean; each orange dot is a month with a <i>Thysanostoma</i> sighting in Hawaiian waters, sized by count; black diamonds are cyclones; dashed lines are OLS trends.",
+      "Each year's <b>August–October</b> window shaded — the three warmest months of the Hawaiian year by SST climatology.",
+      "Sightings inside the warm window light up; sightings in the other nine months fade to grey.",
+      "<b>37% of Hawaiian sightings fall in those three months — 1.5× what a uniform year would give (p = 0.005).</b> The sighting <i>peak</i> itself lags the SST maximum by about a month (Sep–Nov)."
+    ];
+
+    const rolling = (a,w) => a.map((_,i)=>{ if(i<w-1) return null; let s=0,n=0; for(let k=i-w+1;k<=i;k++){ if(a[k]!=null){s+=a[k];n++;} } return n? +(s/n).toFixed(2): null; });
+    const tOf = m => (+m.slice(0,4)) + ((+m.slice(5,7)) - 0.5)/12;
+    const linfit = (ts,ys) => { const n=ts.length, st=ts.reduce((a,b)=>a+b,0), sy=ys.reduce((a,b)=>a+b,0), stt=ts.reduce((a,b)=>a+b*b,0), sty=ts.reduce((a,b,i)=>a+b*ys[i],0); const b=(n*sty-st*sy)/(n*stt-st*st); return {a:(sy-b*st)/n,b}; };
+
+    let step = 0, model = null;
+
+    async function init(){
+      const d = window.HAWAII_SST;
+      const gj = await (await fetch("data/sightings.geojson", { cache:"no-cache" })).json();
+      const SIG = {};                                   // Hawaiian sightings per YYYY-MM, live from the dataset
+      for (const f of gj.features) { const p=f.properties; if (p.hawaii && p.date && p.date.length>=7) SIG[p.date.slice(0,7)] = (SIG[p.date.slice(0,7)]||0)+1; }
+      const idx = {}; d.months.forEach((m,i)=> idx[m]=i);
+      const x = d.months.map(m => m+"-15"), roll = rolling(d.sst_c,12);
+      const ymin = Math.min(...d.sst_c)-0.3, ymax = Math.max(...d.sst_c)+0.8;
+      const pts = Object.entries(SIG).filter(([m])=> m in idx).map(([m,c])=>({ m, x:m+"-15", y:d.sst_c[idx[m]], c, warm: WARM.includes(+m.slice(5,7)) }));
+      const nTot = Object.values(SIG).reduce((a,b)=>a+b,0), nWarm = pts.filter(p=>p.warm).reduce((a,p)=>a+p.c,0);
+      const fitSST = linfit(d.months.map(tOf), d.sst_c);
+      const sigM = pts.map(p=>p.m); const fitSig = linfit(sigM.map(tOf), sigM.map(m=>d.sst_c[idx[m]]));
+      const XR=['2000-01-01','2026-06-30'], yl = f => [f.a+f.b*2000, f.a+f.b*2026.5];
+      const ensoShapes = Object.entries(ENSO).map(([y,ph])=>({ type:'rect', xref:'x', yref:'paper', x0:`${y}-01-01`, x1:`${+y+1}-01-01`, y0:0, y1:1, fillcolor:ENSO_FILL[ph], line:{width:0}, layer:'below' }));
+      const stormShapes = STORMS.map(s=>({ type:'line', xref:'x', yref:'paper', x0:`${s[1]}-${String(s[2]).padStart(2,'0')}-15`, x1:`${s[1]}-${String(s[2]).padStart(2,'0')}-15`, y0:0, y1:1, line:{color:'rgba(0,0,0,0.3)', width:1, dash:'dot'} }));
+      const warmShapes = []; for (let y=2000;y<=2026;y++) warmShapes.push({ type:'rect', xref:'x', yref:'paper', x0:`${y}-08-01`, x1:`${y}-10-31`, y0:0, y1:1, fillcolor:'rgba(230,159,0,0.16)', line:{width:0}, layer:'below' });
+      model = { d, x, roll, ymin, ymax, pts, nTot, nWarm, fitSST, fitSig, XR, yl, ensoShapes, stormShapes, warmShapes };
+      // live stat for the caption (falls back to the published figure if the dataset moves)
+      const pct = Math.round(100*nWarm/nTot), ratio = (nWarm/nTot/0.25).toFixed(1);
+      CAPTIONS[3] = `<b>${pct}% of Hawaiian sightings fall in those three months — ${ratio}× what a uniform year would give (p = 0.005).</b> The sighting <i>peak</i> itself lags the SST maximum by about a month (Sep–Nov).`;
+      render(0);
+    }
+
+    function render(k){
+      step = Math.max(0, Math.min(3, k)); const M = model;
+      const warmOn = step>=2;
+      const off = M.pts.filter(p=>!p.warm), on = M.pts.filter(p=>p.warm);
+      const dot = (arr, color, scale, opacity, name) => ({ name, x:arr.map(p=>p.x), y:arr.map(p=>p.y), text:arr.map(p=>p.c), mode:'markers', type:'scatter',
+        marker:{ color, size:arr.map(p=>(7+p.c*3)*scale), opacity, line:{color:'#fff', width:1} }, hovertemplate:'%{text} sighting(s) · %{y:.1f} °C (%{x|%b %Y})<extra></extra>' });
+      const traces = [
+        { name:'Monthly SST', x:M.x, y:M.d.sst_c, mode:'lines', line:{color:OK.sky, width:1} },
+        { name:'12-mo rolling mean', x:M.x, y:M.roll, mode:'lines', line:{color:OK.blue, width:2.5} },
+        { name:`SST trend (${(M.fitSST.b*10>=0?'+':'')}${(M.fitSST.b*10).toFixed(2)} °C/decade)`, x:M.XR, y:M.yl(M.fitSST), mode:'lines', line:{color:OK.green, width:2, dash:'dash'}, hoverinfo:'skip' },
+        { name:`Sighting-SST trend (${(M.fitSig.b*10>=0?'+':'')}${(M.fitSig.b*10).toFixed(2)} °C/decade)`, x:M.XR, y:M.yl(M.fitSig), mode:'lines', line:{color:OK.orange, width:2, dash:'dash'}, hoverinfo:'skip' },
+      ];
+      if (warmOn) {
+        traces.push(dot(off, OK.grey, 1, 0.75, 'Sighting, other months'));
+        traces.push({ ...dot(on, OK.orange, 2.1, 0.28, 'glow'), hoverinfo:'skip', showlegend:false });
+        traces.push(dot(on, OK.orange, 1, 1, 'Sighting, Aug–Oct (size = count)'));
+      } else {
+        traces.push(dot(M.pts, OK.orange, 1, 1, 'Sighting (size = count)'));
+      }
+      traces.push({ name:'Cyclone in Hawaiian waters', x:STORMS.map(s=>`${s[1]}-${String(s[2]).padStart(2,'0')}-15`), y:STORMS.map(()=>M.ymax-0.15),
+        text:STORMS.map(s=>`${s[0]} (${MN[s[2]]} ${s[1]})`), mode:'markers', marker:{symbol:'diamond', size:10, color:OK.black}, hovertemplate:'%{text}<extra></extra>' });
+      const layout = {
+        xaxis:{ title:'year', type:'date', range:M.XR }, yaxis:{ title:'sea-surface temperature (°C)', range:[M.ymin,M.ymax] },
+        legend:{ orientation:'h', x:0, y:1.12 }, margin:{ t:36, r:20, b:50, l:58 }, paper_bgcolor:'#fff', plot_bgcolor:'#fff',
+        shapes:[...M.ensoShapes, ...(step>=1? M.warmShapes:[]), ...M.stormShapes],
+        annotations: step>=3 ? [{ xref:'paper', yref:'paper', x:0.42, y:0.06, xanchor:'center', yanchor:'bottom', showarrow:false,
+          text:`<b>${Math.round(100*M.nWarm/M.nTot)}% of Hawaiian sightings fall in the three warmest months  —  ${(M.nWarm/M.nTot/0.25).toFixed(1)}× the uniform expectation (p = 0.005)</b>`,
+          font:{ size:15, color:OK.verm }, bgcolor:'#fff', bordercolor:OK.verm, borderwidth:1.5, borderpad:8 }] : []
+      };
+      Plotly.react('plot', traces, layout, { responsive:true, displaylogo:false, modeBarButtonsToRemove:['select2d','lasso2d'] });
+      document.getElementById('caption').innerHTML = CAPTIONS[step];
+      document.querySelectorAll('.steps button').forEach(b => b.classList.toggle('on', +b.dataset.step === step));
+      document.getElementById('prev').disabled = step===0; document.getElementById('next').disabled = step===3;
+    }
+
+    document.getElementById('prev').onclick = () => render(step-1);
+    document.getElementById('next').onclick = () => render(step+1);
+    document.querySelectorAll('.steps button').forEach(b => b.onclick = () => render(+b.dataset.step));
+    document.addEventListener('keydown', e => {
+      if (e.key==='ArrowRight' || e.key===' ') { e.preventDefault(); render(step+1); }
+      else if (e.key==='ArrowLeft') { e.preventDefault(); render(step-1); }
+      else if (e.key.toLowerCase()==='f') { const el=document.querySelector('.card'); document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen?.(); }
+    });
+    window.addEventListener('resize', () => Plotly.Plots.resize('plot'));
+    init().catch(err => { document.getElementById('caption').textContent = 'Could not load data: ' + err; });
+  </script>
+</body>
+</html>
