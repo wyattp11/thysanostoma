@@ -24,6 +24,10 @@
     #panel .btns { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
     #panel button { background:#14304F; color:#E9EEF3; border:1px solid #2B4E73; border-radius:6px; padding:5px 9px; font-size:12px; cursor:pointer; }
     #panel button:hover { background:#1F3A5A; }
+    #panel .seg { display:inline-flex; border:1px solid #2B4E73; border-radius:6px; overflow:hidden; }
+    #panel .seg button { border:0; border-radius:0; padding:4px 8px; background:#14304F; }
+    #panel .seg button + button { border-left:1px solid #2B4E73; }
+    #panel .seg button.on { background:var(--orange); color:#0B1F3A; font-weight:600; }
     #panel .foot { color:#AEBCCB; font-size:11px; margin-top:8px; line-height:1.35; }
     #panel .foot a { color:#8ED1C3; text-decoration:none; }
     #toggle { display:none; }
@@ -57,6 +61,12 @@
       <div class="row"><label><input type="checkbox" id="f-personal" checked><span class="swatch" style="background:var(--orange)"></span>Personal database &amp; Jellywatch</label></div>
       <div class="row"><label><input type="checkbox" id="f-inat" checked><span class="swatch" style="background:var(--blue)"></span>iNaturalist</label></div>
       <div class="row" style="margin-top:6px"><span class="swatch" style="background:var(--green); width:18px; height:18px"></span><span>Clusters — click to expand</span></div>
+      <div class="row" style="margin-top:8px; gap:6px">
+        <span style="font-size:12px; color:#AEBCCB">Basemap</span>
+        <div class="seg" role="group" aria-label="Basemap">
+          <button data-style="satellite">Satellite</button><button data-style="mono">Monochrome</button><button data-style="dark">Dark</button>
+        </div>
+      </div>
       <div class="btns">
         <button id="b-world">World</button>
         <button id="b-hawaii">Hawaiʻi</button>
@@ -111,9 +121,20 @@
     //   The map shows nothing but a grey box until this is filled in.
     // ============================================================================
     mapboxgl.accessToken = "PASTE_MAPBOX_PUBLIC_TOKEN_HERE";
+
+    // Basemaps. "mono" points at Mapbox Light until you publish a Monochrome style from the
+    // Studio template — then paste its URL here (looks like mapbox://styles/wyattp/xxxxxxxx).
+    const STYLES = {
+      satellite: "mapbox://styles/mapbox/standard-satellite",   // Mapbox Standard Satellite (current)
+      mono:      "mapbox://styles/mapbox/light-v11",            // ← replace with your Studio Monochrome URL
+      dark:      "mapbox://styles/mapbox/dark-v11"              // Dark 2D
+    };
+    let styleKey = "dark";
+    try { if (STYLES[localStorage.getItem("thysa-basemap")]) styleKey = localStorage.getItem("thysa-basemap"); } catch (e) {}
+
     const map = new mapboxgl.Map({
       container: "map",
-      style: "mapbox://styles/mapbox/light-v11",
+      style: STYLES[styleKey],
       projection: "mercator",
       center: [150, 5], zoom: 2, minZoom: 1,
       attributionControl: false
@@ -122,22 +143,50 @@
     map.addControl(new mapboxgl.AttributionControl({ compact:true,
       customAttribution: ['Sightings © Wyatt Patry', '<a href="https://www.jellywatch.org/" target="_blank">Jellywatch</a>', '<a href="https://www.inaturalist.org/" target="_blank">iNaturalist</a>'] }), "bottom-right");
 
-    map.on("load", async () => {
-      const res = await fetch("data/sightings.geojson", { cache:"no-cache" });
-      const gj = await res.json();
-      const all = gj.features;
+    let all = null;                       // all features, loaded once
+    const keepSources = () => {
+      const k = new Set();
+      if (document.getElementById("f-personal").checked) k.add("personal");
+      if (document.getElementById("f-inat").checked) k.add("inaturalist");
+      return k;
+    };
+    const filtered = () => ({ type:"FeatureCollection", features: all.filter(f => keepSources().has(f.properties.source)) });
 
-      map.addSource("jellies", { type:"geojson", data:gj, cluster:true, clusterMaxZoom:11, clusterRadius:55 });
-
-      map.addLayer({ id:"clusters", type:"circle", source:"jellies", filter:["has","point_count"],
+    // (Re)build the data layers — runs on first load and after every basemap switch,
+    // because setStyle() drops custom sources/layers.
+    function addData(){
+      if (!all || map.getSource("jellies")) return;
+      map.addSource("jellies", { type:"geojson", data:filtered(), cluster:true, clusterMaxZoom:11, clusterRadius:55 });
+      const slot = { slot:"top" };        // Mapbox Standard: draw above basemap labels (ignored by classic styles)
+      map.addLayer({ id:"clusters", type:"circle", source:"jellies", filter:["has","point_count"], ...slot,
         paint:{ "circle-color":["step",["get","point_count"], "#009E73", 10, "#0072B2", 30, "#CC79A7"],
                 "circle-radius":["step",["get","point_count"], 16, 10, 22, 30, 30],
                 "circle-stroke-width":2, "circle-stroke-color":"#fff", "circle-opacity":.9 } });
-      map.addLayer({ id:"cluster-count", type:"symbol", source:"jellies", filter:["has","point_count"],
+      map.addLayer({ id:"cluster-count", type:"symbol", source:"jellies", filter:["has","point_count"], ...slot,
         layout:{ "text-field":"{point_count_abbreviated}", "text-font":["DIN Pro Medium","Arial Unicode MS Bold"], "text-size":12 }, paint:{ "text-color":"#fff" } });
-      map.addLayer({ id:"points", type:"circle", source:"jellies", filter:["!",["has","point_count"]],
+      map.addLayer({ id:"points", type:"circle", source:"jellies", filter:["!",["has","point_count"]], ...slot,
         paint:{ "circle-color":["match",["get","source"],"inaturalist","#0072B2","#E69F00"],
                 "circle-radius":["interpolate",["linear"],["zoom"], 2, 5, 8, 8], "circle-stroke-width":2, "circle-stroke-color":"#fff" } });
+    }
+
+    function setBasemap(key){
+      if (!STYLES[key]) return;
+      styleKey = key;
+      try { localStorage.setItem("thysa-basemap", key); } catch (e) {}
+      document.querySelectorAll("#panel .seg button").forEach(b => b.classList.toggle("on", b.dataset.style === key));
+      const cam = { center: map.getCenter(), zoom: map.getZoom() };
+      map.setStyle(STYLES[key]);                      // 'style.load' below re-adds the data
+      map.once("style.load", () => map.jumpTo(cam));
+    }
+    document.querySelectorAll("#panel .seg button").forEach(b => b.addEventListener("click", () => setBasemap(b.dataset.style)));
+    document.querySelectorAll("#panel .seg button").forEach(b => b.classList.toggle("on", b.dataset.style === styleKey));
+
+    map.on("style.load", () => { map.setProjection("mercator"); addData(); });
+
+    map.on("load", async () => {
+      const res = await fetch("data/sightings.geojson", { cache:"no-cache" });
+      all = (await res.json()).features;
+      addData();
 
       // counts + fit
       const n = all.length, nH = all.filter(f => f.properties.hawaii).length;
@@ -146,30 +195,8 @@
       fetch("data/summary.json").then(r => r.json()).then(s => { document.getElementById("generated").textContent = `Updated ${s.generated}.`; }).catch(()=>{});
       map.fitBounds(pacificBounds(all), { padding:40, duration:0 });
 
-      // interactions
-      map.on("click", "clusters", e => {
-        const f = map.queryRenderedFeatures(e.point, { layers:["clusters"] })[0];
-        map.getSource("jellies").getClusterExpansionZoom(f.properties.cluster_id, (err, zoom) => {
-          if (!err) map.easeTo({ center:f.geometry.coordinates, zoom, duration:700 });
-        });
-      });
-      map.on("click", "points", e => {
-        const f = e.features[0], c = f.geometry.coordinates.slice();
-        while (Math.abs(e.lngLat.lng - c[0]) > 180) c[0] += e.lngLat.lng > c[0] ? 360 : -360;
-        new mapboxgl.Popup({ offset:10, maxWidth:"360px" }).setLngLat(c).setHTML(popupHTML(f.properties)).addTo(map);
-      });
-      for (const id of ["clusters","points"]) {
-        map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
-        map.on("mouseleave", id, () => map.getCanvas().style.cursor = "");
-      }
-
       // source filters (re-feed the source so clusters recount)
-      const applyFilter = () => {
-        const keep = new Set();
-        if (document.getElementById("f-personal").checked) keep.add("personal");
-        if (document.getElementById("f-inat").checked) keep.add("inaturalist");
-        map.getSource("jellies").setData({ type:"FeatureCollection", features: all.filter(f => keep.has(f.properties.source)) });
-      };
+      const applyFilter = () => map.getSource("jellies") && map.getSource("jellies").setData(filtered());
       document.getElementById("f-personal").addEventListener("change", applyFilter);
       document.getElementById("f-inat").addEventListener("change", applyFilter);
 
@@ -179,6 +206,23 @@
       document.getElementById("b-kona").onclick   = () => map.fitBounds(KONA_BBOX, { padding:40 });
       document.getElementById("toggle").onclick   = () => document.getElementById("panel").classList.toggle("open");
     });
+
+    // interactions — bound by layer id, so they survive basemap switches
+    map.on("click", "clusters", e => {
+      const f = map.queryRenderedFeatures(e.point, { layers:["clusters"] })[0];
+      map.getSource("jellies").getClusterExpansionZoom(f.properties.cluster_id, (err, zoom) => {
+        if (!err) map.easeTo({ center:f.geometry.coordinates, zoom, duration:700 });
+      });
+    });
+    map.on("click", "points", e => {
+      const f = e.features[0], c = f.geometry.coordinates.slice();
+      while (Math.abs(e.lngLat.lng - c[0]) > 180) c[0] += e.lngLat.lng > c[0] ? 360 : -360;
+      new mapboxgl.Popup({ offset:10, maxWidth:"360px" }).setLngLat(c).setHTML(popupHTML(f.properties)).addTo(map);
+    });
+    for (const id of ["clusters","points"]) {
+      map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
+      map.on("mouseleave", id, () => map.getCanvas().style.cursor = "");
+    }
   </script>
 </body>
 </html>
