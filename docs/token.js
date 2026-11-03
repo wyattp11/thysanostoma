@@ -7,4 +7,4 @@
 // won't overwrite the token or trip the secret scanner. (After pasting on GitHub, run
 // `git pull` in web-map.nosync so your clone has the same file.)
 // ============================================================================
-window.MAPBOX_TOKEN = "PASTE_MAPBOX_PUBLIC_TOKEN_HERE";
+window.MAPBOX_TOKEN = "pk.eyJ1Ijoid3lhdHRwIiwiYSI6ImNtdzBnMHRwYTBiaDgzNW9ibWJzcTF4MXMifQ.VHKdYNoAEBx6jgGnk-zkpw";
