@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+  <script src="token.js"></script>   <!-- defines window.MAPBOX_TOKEN; edit that file on GitHub, never here -->
   <style>
     :root { --navy:#0B1F3A; --ink:#1A1A1A; --muted:#5E6B78; --orange:#E69F00; --blue:#0072B2; --green:#009E73; --sky:#56B4E9; --purple:#CC79A7; }
     html, body { height:100%; margin:0; font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); }
@@ -111,16 +112,9 @@
     }
 
     // ---------- map ----------
-    // ============================================================================
-    // WYATT: PASTE YOUR MAPBOX PUBLIC TOKEN BETWEEN THE QUOTES BELOW (on GitHub.com).
-    //   The token is committed as a placeholder because GitHub push protection
-    //   blocks any Mapbox token from the command line. Edit this one line in the
-    //   GitHub web editor (docs/index.html → pencil icon), paste the pk. token,
-    //   commit directly to master; if GitHub warns, choose "It's used in tests" /
-    //   bypass. Use the URL-restricted token (wyattp11.github.io/*), not the 2020 one.
-    //   The map shows nothing but a grey box until this is filled in.
-    // ============================================================================
-    mapboxgl.accessToken = "PASTE_MAPBOX_PUBLIC_TOKEN_HERE";
+    // The Mapbox public token lives in docs/token.js (window.MAPBOX_TOKEN) — see the note in that file.
+    mapboxgl.accessToken = window.MAPBOX_TOKEN || "";
+    if (!mapboxgl.accessToken) document.getElementById("counts").textContent = "Mapbox token missing — see docs/token.js";
 
     // Basemaps. "mono" points at Mapbox Light until you publish a Monochrome style from the
     // Studio template — then paste its URL here (looks like mapbox://styles/wyattp/xxxxxxxx).
