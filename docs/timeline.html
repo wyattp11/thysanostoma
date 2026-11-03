@@ -44,7 +44,7 @@
       <div class="controls">
         <button id="prev">◀</button>
         <div class="steps" role="group" aria-label="Build steps">
-          <button data-step="0">Time series</button><button data-step="1">Warmest months</button><button data-step="2">Highlight sightings</button><button data-step="3">The number</button>
+          <button data-step="0">Time series</button><button data-step="1">Warmest months</button><button data-step="2">Highlight sightings</button><button data-step="3">The number</button><button data-step="4">After the peak</button>
         </div>
         <button id="next">Next ▶</button>
         <span class="note" style="margin:0">or use <kbd>←</kbd> <kbd>→</kbd> · <kbd>F</kbd> fullscreen</span>
@@ -64,12 +64,14 @@
     const STORMS = [["Flossie",2007,8],["Flossie",2013,7],["Iselle",2014,8],["Ana",2014,10],["Ignacio",2015,8],["Darby",2016,7],
                     ["Madeline",2016,9],["Lane",2018,8],["Olivia",2018,9],["Erick",2019,8],["Douglas",2020,7],["Hone",2024,8]];
     const WARM = [8,9,10];                       // three warmest months, SST climatology (Aug 27.1, Sep 27.3, Oct 27.3 °C)
+    const LATE = [9,10,11];                      // the window that follows the SST peak — the sighting peak
     const MN = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const CAPTIONS = [
       "Monthly SST (thin line) and its 12-month rolling mean; each orange dot is a month with a <i>Thysanostoma</i> sighting in Hawaiian waters, sized by count; black diamonds are cyclones; dashed lines are OLS trends.",
       "Each year's <b>August–October</b> window shaded — the three warmest months of the Hawaiian year by SST climatology.",
       "Sightings inside the warm window light up; sightings in the other nine months fade to grey.",
-      "<b>37% of Hawaiian sightings fall in those three months — 1.5× what a uniform year would give (p = 0.005).</b> The sighting <i>peak</i> itself lags the SST maximum by about a month (Sep–Nov)."
+      "<b>37% of Hawaiian sightings fall in those three months — 1.5× what a uniform year would give (p = 0.005).</b>",
+      "Slide the window one month later: <b>the sighting peak follows the SST maximum.</b> 48% of sightings fall in Sep–Nov (1.9× uniform), and sightings track SST best at a 1-month lag (r = 0.74)."
     ];
 
     const rolling = (a,w) => a.map((_,i)=>{ if(i<w-1) return null; let s=0,n=0; for(let k=i-w+1;k<=i;k++){ if(a[k]!=null){s+=a[k];n++;} } return n? +(s/n).toFixed(2): null; });
@@ -86,25 +88,27 @@
       const idx = {}; d.months.forEach((m,i)=> idx[m]=i);
       const x = d.months.map(m => m+"-15"), roll = rolling(d.sst_c,12);
       const ymin = Math.min(...d.sst_c)-0.3, ymax = Math.max(...d.sst_c)+0.8;
-      const pts = Object.entries(SIG).filter(([m])=> m in idx).map(([m,c])=>({ m, x:m+"-15", y:d.sst_c[idx[m]], c, warm: WARM.includes(+m.slice(5,7)) }));
-      const nTot = Object.values(SIG).reduce((a,b)=>a+b,0), nWarm = pts.filter(p=>p.warm).reduce((a,p)=>a+p.c,0);
+      const pts = Object.entries(SIG).filter(([m])=> m in idx).map(([m,c])=>({ m, x:m+"-15", y:d.sst_c[idx[m]], c, warm: WARM.includes(+m.slice(5,7)), late: LATE.includes(+m.slice(5,7)) }));
+      const nTot = pts.reduce((a,p)=>a+p.c,0), nWarm = pts.filter(p=>p.warm).reduce((a,p)=>a+p.c,0), nLate = pts.filter(p=>p.late).reduce((a,p)=>a+p.c,0);
       const fitSST = linfit(d.months.map(tOf), d.sst_c);
       const sigM = pts.map(p=>p.m); const fitSig = linfit(sigM.map(tOf), sigM.map(m=>d.sst_c[idx[m]]));
       const XR=['2000-01-01','2026-06-30'], yl = f => [f.a+f.b*2000, f.a+f.b*2026.5];
       const ensoShapes = Object.entries(ENSO).map(([y,ph])=>({ type:'rect', xref:'x', yref:'paper', x0:`${y}-01-01`, x1:`${+y+1}-01-01`, y0:0, y1:1, fillcolor:ENSO_FILL[ph], line:{width:0}, layer:'below' }));
       const stormShapes = STORMS.map(s=>({ type:'line', xref:'x', yref:'paper', x0:`${s[1]}-${String(s[2]).padStart(2,'0')}-15`, x1:`${s[1]}-${String(s[2]).padStart(2,'0')}-15`, y0:0, y1:1, line:{color:'rgba(0,0,0,0.3)', width:1, dash:'dot'} }));
-      const warmShapes = []; for (let y=2000;y<=2026;y++) warmShapes.push({ type:'rect', xref:'x', yref:'paper', x0:`${y}-08-01`, x1:`${y}-10-31`, y0:0, y1:1, fillcolor:'rgba(230,159,0,0.16)', line:{width:0}, layer:'below' });
-      model = { d, x, roll, ymin, ymax, pts, nTot, nWarm, fitSST, fitSig, XR, yl, ensoShapes, stormShapes, warmShapes };
+      const warmShapes = [], lateShapes = []; for (let y=2000;y<=2026;y++) { warmShapes.push({ type:'rect', xref:'x', yref:'paper', x0:`${y}-08-01`, x1:`${y}-10-31`, y0:0, y1:1, fillcolor:'rgba(230,159,0,0.16)', line:{width:0}, layer:'below' }); lateShapes.push({ type:'rect', xref:'x', yref:'paper', x0:`${y}-09-01`, x1:`${y}-11-30`, y0:0, y1:1, fillcolor:'rgba(204,121,167,0.18)', line:{width:0}, layer:'below' }); }
+      model = { d, x, roll, ymin, ymax, pts, nTot, nWarm, nLate, fitSST, fitSig, XR, yl, ensoShapes, stormShapes, warmShapes, lateShapes };
       // live stat for the caption (falls back to the published figure if the dataset moves)
       const pct = Math.round(100*nWarm/nTot), ratio = (nWarm/nTot/0.25).toFixed(1);
-      CAPTIONS[3] = `<b>${pct}% of Hawaiian sightings fall in those three months — ${ratio}× what a uniform year would give (p = 0.005).</b> The sighting <i>peak</i> itself lags the SST maximum by about a month (Sep–Nov).`;
+      CAPTIONS[3] = `<b>${pct}% of Hawaiian sightings fall in those three months — ${ratio}× what a uniform year would give (p = 0.005).</b>`;
+      CAPTIONS[4] = `Slide the window one month later: <b>the sighting peak follows the SST maximum.</b> ${Math.round(100*nLate/nTot)}% of sightings fall in Sep–Nov (${(nLate/nTot/0.25).toFixed(1)}× uniform), and sightings track SST best at a 1-month lag (r = 0.74).`;
       render(0);
     }
 
     function render(k){
-      step = Math.max(0, Math.min(3, k)); const M = model;
-      const warmOn = step>=2;
-      const off = M.pts.filter(p=>!p.warm), on = M.pts.filter(p=>p.warm);
+      step = Math.max(0, Math.min(4, k)); const M = model;
+      const late = step>=4, warmOn = step>=2;
+      const key = late ? "late" : "warm", hi = late ? OK.purple : OK.orange, lab = late ? "Sep–Nov" : "Aug–Oct";
+      const off = M.pts.filter(p=>!p[key]), on = M.pts.filter(p=>p[key]);
       const dot = (arr, color, scale, opacity, name) => ({ name, x:arr.map(p=>p.x), y:arr.map(p=>p.y), text:arr.map(p=>p.c), mode:'markers', type:'scatter',
         marker:{ color, size:arr.map(p=>(7+p.c*3)*scale), opacity, line:{color:'#fff', width:1} }, hovertemplate:'%{text} sighting(s) · %{y:.1f} °C (%{x|%b %Y})<extra></extra>' });
       const traces = [
@@ -115,8 +119,8 @@
       ];
       if (warmOn) {
         traces.push(dot(off, OK.grey, 1, 0.75, 'Sighting, other months'));
-        traces.push({ ...dot(on, OK.orange, 2.1, 0.28, 'glow'), hoverinfo:'skip', showlegend:false });
-        traces.push(dot(on, OK.orange, 1, 1, 'Sighting, Aug–Oct (size = count)'));
+        traces.push({ ...dot(on, hi, 2.1, 0.28, 'glow'), hoverinfo:'skip', showlegend:false });
+        traces.push(dot(on, hi, 1, 1, `Sighting, ${lab} (size = count)`));
       } else {
         traces.push(dot(M.pts, OK.orange, 1, 1, 'Sighting (size = count)'));
       }
@@ -125,15 +129,18 @@
       const layout = {
         xaxis:{ title:'year', type:'date', range:M.XR }, yaxis:{ title:'sea-surface temperature (°C)', range:[M.ymin,M.ymax] },
         legend:{ orientation:'h', x:0, y:1.12 }, margin:{ t:36, r:20, b:50, l:58 }, paper_bgcolor:'#fff', plot_bgcolor:'#fff',
-        shapes:[...M.ensoShapes, ...(step>=1? M.warmShapes:[]), ...M.stormShapes],
-        annotations: step>=3 ? [{ xref:'paper', yref:'paper', x:0.42, y:0.06, xanchor:'center', yanchor:'bottom', showarrow:false,
+        shapes:[...M.ensoShapes, ...(late ? M.lateShapes : step>=1 ? M.warmShapes : []), ...M.stormShapes],
+        annotations: step===3 ? [{ xref:'paper', yref:'paper', x:0.42, y:0.06, xanchor:'center', yanchor:'bottom', showarrow:false,
           text:`<b>${Math.round(100*M.nWarm/M.nTot)}% of Hawaiian sightings fall in the three warmest months  —  ${(M.nWarm/M.nTot/0.25).toFixed(1)}× the uniform expectation (p = 0.005)</b>`,
-          font:{ size:15, color:OK.verm }, bgcolor:'#fff', bordercolor:OK.verm, borderwidth:1.5, borderpad:8 }] : []
+          font:{ size:15, color:OK.verm }, bgcolor:'#fff', bordercolor:OK.verm, borderwidth:1.5, borderpad:8 }]
+        : step>=4 ? [{ xref:'paper', yref:'paper', x:0.42, y:0.06, xanchor:'center', yanchor:'bottom', showarrow:false,
+          text:`<b>The sighting peak follows the SST maximum by ~1 month: ${Math.round(100*M.nLate/M.nTot)}% fall in Sep–Nov (${(M.nLate/M.nTot/0.25).toFixed(1)}× uniform) · r = 0.74 at a 1-month lag</b>`,
+          font:{ size:14, color:OK.purple }, bgcolor:'#fff', bordercolor:OK.purple, borderwidth:1.5, borderpad:8 }] : []
       };
       Plotly.react('plot', traces, layout, { responsive:true, displaylogo:false, modeBarButtonsToRemove:['select2d','lasso2d'] });
       document.getElementById('caption').innerHTML = CAPTIONS[step];
       document.querySelectorAll('.steps button').forEach(b => b.classList.toggle('on', +b.dataset.step === step));
-      document.getElementById('prev').disabled = step===0; document.getElementById('next').disabled = step===3;
+      document.getElementById('prev').disabled = step===0; document.getElementById('next').disabled = step===4;
     }
 
     document.getElementById('prev').onclick = () => render(step-1);
